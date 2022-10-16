@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/src/foundation/key.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:http/http.dart';
@@ -17,7 +20,7 @@ class ImageUpload extends StatefulWidget {
 }
 
 class _ImageUploadState extends State<ImageUpload> {
-  var image;
+  File? image;
 
   /// Get from gallery
   _getFromGallery() async {
@@ -43,20 +46,32 @@ class _ImageUploadState extends State<ImageUpload> {
 
     void uploadImageToServer(image) async {
       try {
-        Response response =
-            // await post(Uri.parse('https://reqres.in/api/register'),
-            await post(
-                Uri.parse(
-                    'https://kiranacarts.com/testing-kiranacarts-v1/ShopApi/user_profile_upload'),
-                body: {
-              "device_type": "android",
-              "gtoken": "NBsQomtj3hVPYBu1W5",
-              "login_user_id": "1",
-              "url_profile": "$image"
-            });
+        print("Image FIle Path Server $image");
+        var url = Uri.parse(
+            'https://kiranacarts.com/testing-kiranacarts-v1/ShopApi/user_profile_upload/1');
+
+        var stream =
+            new http.ByteStream(DelegatingStream.typed(image.openRead()));
+        var length = await image.length();
+        var request = new http.MultipartRequest("POST", url);
+
+        var multipartFileSign = http.MultipartFile(
+            'url_profile', stream, length,
+            filename: basename(image.path));
+
+        request.files.add(multipartFileSign);
+
+        request.fields['device_type'] = "android";
+        request.fields['gtoken'] = "NBsQomtj3hVPYBu1W5";
+        request.fields['login_user_id'] = "1";
+        var sendData = await request.send();
+
+        final response = await http.Response.fromStream(sendData);
+        print("DATA RES5 ${response.body}");
 
         if (response.statusCode == 200) {
           print("Successfully Working ");
+          print("Response  Body ${response.body}");
 
           var messsage = ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: new Text("Image Uploaded Successfully ")));
@@ -96,7 +111,7 @@ class _ImageUploadState extends State<ImageUpload> {
                     ),
                     borderRadius: BorderRadius.all(Radius.circular(20))),
                 child: (image != null)
-                    ? Image.file(image, fit: BoxFit.fitWidth)
+                    ? Image.file(image!, fit: BoxFit.fitWidth)
                     : Icon(Icons.photo_album)),
           ),
         ),
